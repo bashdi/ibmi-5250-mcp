@@ -95,6 +95,12 @@ Fields are addressed by their **index** (`fill_fields`). The index is only valid
 
 Rows and columns are 1-based.
 
+### Confirmation (`confirmed`)
+
+`fill_fields`, `send_keys` and `type_text` can execute commands on the host, so each has a required boolean parameter `confirmed`. If it is `false` or missing, **nothing is done**: the call returns an error saying so and never reaches the session. The tool descriptions instruct the AI to analyze the command first, and, if it deletes, overwrites or modifies data, to warn the user, obtain confirmation, and only then call the tool with `confirmed=true`. The check is enforced twice, in the MCP server and again in the agent. Read-only tools (`list_sessions`, `get_screen`, `wait_for_text`) and `set_cursor` need no confirmation.
+
+Note that the flag is a guard rail for the AI's behavior: the model sets it, so it is only as reliable as the model following its instructions. For hard protection, also use a restricted IBM i user profile or your MCP client's per-tool approval prompts.
+
 ## Platform support
 
 The code is plain Java (no native code, no Windows APIs), so it is designed to run anywhere ACS runs:

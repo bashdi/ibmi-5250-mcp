@@ -152,6 +152,8 @@ public final class AgentImpl {
                 }
                 return sb.toString().trim();
             }
+            if ((tool.equals("fill_fields") || tool.equals("send_keys") || tool.equals("type_text")) && !bool(a, "confirmed", false))
+                throw new ToolException("NOT EXECUTED: 'confirmed' is not true, so nothing was done in the session.");
             Sess s = pick(all, str(a, "session"));
             int timeout = num(a, "timeout_ms", 10000);
             switch (tool) {

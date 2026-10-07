@@ -83,6 +83,8 @@ public final class McpServer {
         String name = (String) p.get("name");
         Map<String, Object> args = Json.obj(p.get("arguments"));
         if (args == null) args = new LinkedHashMap<>();
+        if (Defs.EXECUTING.contains(name) && !Boolean.TRUE.equals(args.get("confirmed")))
+            return text(Defs.NOT_CONFIRMED, true);
         try {
             Map<String, Object> req = new LinkedHashMap<>();
             req.put("tool", name);
@@ -225,6 +227,17 @@ public final class McpServer {
     static final class Defs {
         static final String KEYS = "Emulator key mnemonics in brackets, e.g. [enter] [tab] [backtab] [pf1]..[pf24] [pageup] [pagedown] [clear] [reset] [attn] [sysreq] [fieldexit] [home] [eraseeof] [up] [down] [left] [right]. Plain characters are typed as-is.";
 
+        /** Tools that type into the session or press keys, i.e. can execute commands on the host. */
+        static final java.util.Set<String> EXECUTING = new java.util.HashSet<>(java.util.Arrays.asList("fill_fields", "send_keys", "type_text"));
+
+        static final String NOT_CONFIRMED = "NOT EXECUTED: 'confirmed' is not true, so nothing was done in the session. "
+            + "Analyze the command first. If it deletes, overwrites or modifies data, warn the user, obtain their confirmation, "
+            + "and only then call this tool again with confirmed=true.";
+
+        static final String CONFIRM_RULE = " Analyze the command before execution. If it deletes, overwrites or modifies data, "
+            + "you must first warn the user, obtain confirmation, and only then call the tool with confirmed=True. "
+            + "If confirmed is false, nothing is done.";
+
         static Map<String, Object> p(String type, String desc) { return map("type", type, "description", desc); }
 
         static Map<String, Object> schema(Map<String, Object> props, String... required) {
@@ -240,20 +253,21 @@ public final class McpServer {
         static List<Object> tools() {
             Map<String, Object> session = p("string", "Session name (e.g. \"A\"). Optional if exactly one session is open.");
             Map<String, Object> timeout = p("integer", "Max time in ms to wait for the host. Default 10000.");
+            Map<String, Object> confirmed = p("boolean", "Must be true to execute. If false or missing, nothing is done. Set to true only after the command was analyzed and, for anything that deletes, overwrites or modifies data, the user has explicitly confirmed it.");
             Map<String, Object> fieldItem = schema(map("index", p("integer", "Field index from get_screen"), "text", p("string", "Text to enter (replaces the field content)")), "index", "text");
             List<Object> l = new ArrayList<>();
             l.add(tool("list_sessions", "List the open emulator sessions.", schema(map())));
             l.add(tool("get_screen", "Return the current 5250 screen as text (rows), the cursor position, keyboard state and all input fields with index, row/col and length. Rows and columns are 1-based. Use the field index with fill_fields.",
                 schema(map("session", session, "include_protected", p("boolean", "Also list protected (read-only) fields. Default false.")))));
-            l.add(tool("fill_fields", "Write text into input fields (by index from get_screen) and optionally press a key afterwards (e.g. \"[enter]\"). Returns the resulting screen. Each field's content is replaced. Hidden/password fields are never echoed back.",
+            l.add(tool("fill_fields", "Write text into input fields (by index from get_screen) and optionally press a key afterwards (e.g. \"[enter]\"). Returns the resulting screen. Each field's content is replaced. Hidden/password fields are never echoed back." + CONFIRM_RULE,
                 schema(map("session", session,
                     "fields", map("type", "array", "description", "Fields to fill.", "items", fieldItem),
                     "key", p("string", "Optional key pressed after filling, e.g. [enter] or [pf4]. " + KEYS),
-                    "timeout_ms", timeout), "fields")));
-            l.add(tool("send_keys", "Press keys (AID/function keys, tab, etc.) and return the resulting screen. " + KEYS,
-                schema(map("session", session, "keys", p("string", "Key sequence"), "timeout_ms", timeout), "keys")));
-            l.add(tool("type_text", "Type literal text at a screen position (or at the cursor if row/col omitted) without pressing any key. Prefer fill_fields.",
-                schema(map("session", session, "text", p("string", "Text"), "row", p("integer", "1-based row"), "col", p("integer", "1-based column")), "text")));
+                    "timeout_ms", timeout, "confirmed", confirmed), "fields", "confirmed")));
+            l.add(tool("send_keys", "Press keys (AID/function keys, tab, etc.) and return the resulting screen. " + KEYS + CONFIRM_RULE,
+                schema(map("session", session, "keys", p("string", "Key sequence"), "timeout_ms", timeout, "confirmed", confirmed), "keys", "confirmed")));
+            l.add(tool("type_text", "Type literal text at a screen position (or at the cursor if row/col omitted) without pressing any key. Prefer fill_fields." + CONFIRM_RULE,
+                schema(map("session", session, "text", p("string", "Text"), "row", p("integer", "1-based row"), "col", p("integer", "1-based column"), "confirmed", confirmed), "text", "confirmed")));
             l.add(tool("set_cursor", "Move the cursor to a position and return the screen.",
                 schema(map("session", session, "row", p("integer", "1-based row"), "col", p("integer", "1-based column")), "row", "col")));
             l.add(tool("wait_for_text", "Wait until the given text appears anywhere on the screen (case-insensitive). Returns the screen either way and says whether it was found.",
