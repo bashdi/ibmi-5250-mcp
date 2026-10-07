@@ -225,7 +225,7 @@ public final class McpServer {
 
     /** Tool definitions advertised to the MCP client. */
     static final class Defs {
-        static final String KEYS = "Emulator key mnemonics in brackets, e.g. [enter] [tab] [backtab] [pf1]..[pf24] [pageup] [pagedown] [clear] [reset] [attn] [sysreq] [fieldexit] [home] [eraseeof] [up] [down] [left] [right]. Plain characters are typed as-is.";
+        static final String KEYS = "Emulator key mnemonics in brackets, e.g. [enter] [tab] [backtab] [pf1]..[pf24] [pa1] [pagedn] [pageup] [clear] [reset] [attn] [sysreq] [fldext] [home] [eraseeof] [up] [down] [left] [right] ([pagedown] and [fieldexit] are accepted as aliases). For scrolling prefer the page_down / page_up tools. Plain characters are typed as-is.";
 
         /** Tools that type into the session or press keys, i.e. can execute commands on the host. */
         static final java.util.Set<String> EXECUTING = new java.util.HashSet<>(java.util.Arrays.asList("fill_fields", "send_keys", "type_text"));
@@ -266,6 +266,10 @@ public final class McpServer {
                     "timeout_ms", timeout, "confirmed", confirmed), "fields", "confirmed")));
             l.add(tool("send_keys", "Press keys (AID/function keys, tab, etc.) and return the resulting screen. " + KEYS + CONFIRM_RULE,
                 schema(map("session", session, "keys", p("string", "Key sequence"), "timeout_ms", timeout, "confirmed", confirmed), "keys", "confirmed")));
+            l.add(tool("page_down", "Scroll the green screen forward (Page Down / Roll Up) and return the new screen. Pure navigation, no confirmation needed. Use this to see further list entries, subfile pages or long output.",
+                schema(map("session", session, "times", p("integer", "How many pages to scroll (1-20). Default 1. Only the last screen is returned."), "timeout_ms", timeout))));
+            l.add(tool("page_up", "Scroll the green screen backward (Page Up / Roll Down) and return the new screen. Pure navigation, no confirmation needed.",
+                schema(map("session", session, "times", p("integer", "How many pages to scroll (1-20). Default 1. Only the last screen is returned."), "timeout_ms", timeout))));
             l.add(tool("type_text", "Type literal text at a screen position (or at the cursor if row/col omitted) without pressing any key. Prefer fill_fields." + CONFIRM_RULE,
                 schema(map("session", session, "text", p("string", "Text"), "row", p("integer", "1-based row"), "col", p("integer", "1-based column"), "confirmed", confirmed), "text", "confirmed")));
             l.add(tool("set_cursor", "Move the cursor to a position and return the screen.",

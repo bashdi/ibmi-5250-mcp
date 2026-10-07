@@ -188,6 +188,13 @@ public final class AgentImpl {
                     sendKeys(s, keys, timeout);
                     return format(s, false);
                 }
+                case "page_down":
+                case "page_up": {
+                    requireReady(s);
+                    int times = Math.max(1, Math.min(20, num(a, "times", 1)));
+                    for (int i = 0; i < times; i++) sendKeys(s, tool.equals("page_down") ? "[pagedn]" : "[pageup]", timeout);
+                    return format(s, false);
+                }
                 case "type_text": {
                     requireReady(s);
                     String text = str(a, "text");
@@ -245,8 +252,28 @@ public final class AgentImpl {
             if (!ok) throw new ToolException("Keyboard is locked (input inhibited), cannot type now: " + inhibit(s));
         }
 
+        /** HOD mnemonic names differ from the common ones ([pagedn], [fldext]); accept the usual aliases. */
+        static String normalizeKeys(String keys) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("\\[([A-Za-z0-9]+)\\]").matcher(keys);
+            StringBuffer out = new StringBuffer();
+            while (m.find()) {
+                String k = m.group(1).toLowerCase();
+                String r = m.group(0);
+                switch (k) {
+                    case "pagedown": case "pgdn": r = "[pagedn]"; break;
+                    case "pgup": case "pageup": r = "[pageup]"; break;
+                    case "fieldexit": r = "[fldext]"; break;
+                    case "eraseeof": r = "[eraseeof]"; break;
+                    default: break;
+                }
+                m.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(r));
+            }
+            m.appendTail(out);
+            return out.toString();
+        }
+
         static void sendKeys(Sess s, String keys, int timeoutMs) throws Exception {
-            R.call(s.ps, "SendKeys", keys);
+            R.call(s.ps, "SendKeys", normalizeKeys(keys));
             Thread.sleep(150); // let the keyboard lock before polling the OIA
             R.call(s.oia, "WaitForInput", (long) timeoutMs);
             Thread.sleep(60);

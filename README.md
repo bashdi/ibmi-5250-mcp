@@ -88,7 +88,8 @@ Fields are addressed by their **index** (`fill_fields`). The index is only valid
 | `list_sessions` | open ACS sessions (A, B, ...) |
 | `get_screen` | screen text, cursor, keyboard state, input fields |
 | `fill_fields` | fill fields by index, optionally press a key afterwards (`[enter]`) |
-| `send_keys` | send keys: `[enter] [pf3] [tab] [pagedown] ...` |
+| `send_keys` | send keys: `[enter] [pf3] [tab] [pagedn] ...` (HOD names; `[pagedown]`, `[fieldexit]` are accepted as aliases) |
+| `page_down` / `page_up` | scroll the green screen (optionally `times` pages); pure navigation, no confirmation needed |
 | `type_text` | type text at a position or the cursor |
 | `set_cursor` | move the cursor |
 | `wait_for_text` | wait until text appears on the screen |
